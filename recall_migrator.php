@@ -51,7 +51,7 @@ class RecallMigrator extends RecallMigrator_Base {
   // var $cm = null; // Countries
   // var $mm = null; // Municipalities (Cities)
   // var $sm = null; // States
-  // var $am = null; // Airports
+  var $rm = null; // Recalls
   // var $pm = null; // Permalinks
 
   function RecallMigrator() {

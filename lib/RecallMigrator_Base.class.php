@@ -81,7 +81,7 @@ class RecallMigrator_Base {
       // $state = $wpdb->get_row('SELECT COUNT(*) as thecount FROM us_states USE INDEX (PRIMARY)', ARRAY_A);
       // $muni = $wpdb->get_row('SELECT COUNT(*) as thecount FROM municipalities USE INDEX (PRIMARY)', ARRAY_A);
       // $counts['country'] = $country['thecount'];
-      $counts['airport'] = $recall['count'];
+      $counts['recall'] = $recall['count'];
       // $counts['state'] = $state['thecount'];
       // $counts['muni'] = $muni['thecount'];
       set_transient($t_name, $counts, 60*60*1);
