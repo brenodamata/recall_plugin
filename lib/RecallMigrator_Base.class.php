@@ -77,7 +77,7 @@ class RecallMigrator_Base {
       global $wpdb;
       $counts = array();
       // $country = $wpdb->get_row('SELECT COUNT(*) as thecount FROM countriesinfo USE INDEX (PRIMARY)', ARRAY_A);
-      $recall = $wpdb->get_row('SELECT COUNT(*) as count FROM recallsinfo USE INDEX (PRIMARY)', ARRAY_A);
+      $recall = $wpdb->get_row('SELECT COUNT(*) as count FROM recalls USE INDEX (PRIMARY)', ARRAY_A);
       // $state = $wpdb->get_row('SELECT COUNT(*) as thecount FROM us_states USE INDEX (PRIMARY)', ARRAY_A);
       // $muni = $wpdb->get_row('SELECT COUNT(*) as thecount FROM municipalities USE INDEX (PRIMARY)', ARRAY_A);
       // $counts['country'] = $country['thecount'];

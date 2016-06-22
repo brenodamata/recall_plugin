@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__.'/RM_Model.class.php';
-class AM_Permalink extends RM_Model {
+class RM_Permalink extends RM_Model {
 
   public function RM_Permalink() {
     $this->table = 'recall_permalinks';
@@ -10,7 +10,7 @@ class AM_Permalink extends RM_Model {
   public function find($id) {
     return $this->orm()->find_one($id);
   }
-  // 
+  //
   // public function all_by_country($id, $page) {
   //   $o = $this->orm()->where('country_id', $id);
   //   return $o->find_many();

@@ -22,6 +22,7 @@ The bulk of the plugin is related to managing the database, and will just be cru
 include __DIR__.'/lib/RecallMigrator_Base.class.php';
 include __DIR__.'/lib/Idorm.php';
 include __DIR__.'/models/RM_Recall.class.php';
+include __DIR__.'/models/RM_Permalink.class.php';
 
 //Exit if accessed directly
 if ( ! defined( 'ABSPATH') ) {
@@ -34,7 +35,6 @@ if ( ! defined( 'ABSPATH') ) {
 // include __DIR__.'/models/AM_State.class.php';
 // include __DIR__.'/models/AM_City.class.php';
 // include __DIR__.'/models/AM_Airport.class.php';
-// include __DIR__.'/models/AM_Permalink.class.php';
 
 
 if ( class_exists( 'RecallMigrator' ) )
@@ -42,6 +42,27 @@ if ( class_exists( 'RecallMigrator' ) )
 
 define( 'RECALL_MIGRATOR_VERSION', '1.0' );
 define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
+
+register_activation_hook( __FILE__, 'trk_jal_install' );
+
+function trk_jal_install() {
+  global $wpdb;
+
+  $table_name = $wpdb->prefix . "recalls";
+  $charset_collate = $wpdb->get_charset_collate();
+
+  $sql = "CREATE TABLE $table_name (
+    id mediumint(9) NOT NULL AUTO_INCREMENT,
+    time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+    name tinytext NOT NULL,
+    text text NOT NULL,
+    url varchar(55) DEFAULT '' NOT NULL,
+    UNIQUE KEY id (id)
+  ) $charset_collate;";
+
+  require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+  dbDelta( $sql );
+}
 
 class RecallMigrator extends RecallMigrator_Base {
 
@@ -52,7 +73,7 @@ class RecallMigrator extends RecallMigrator_Base {
   // var $mm = null; // Municipalities (Cities)
   // var $sm = null; // States
   var $rm = null; // Recalls
-  // var $pm = null; // Permalinks
+  var $pm = null; // Permalinks
 
   function RecallMigrator() {
     $host_string = sprintf("mysql:host=%s;dbname=%s", DB_HOST, DB_NAME);
@@ -70,19 +91,13 @@ class RecallMigrator extends RecallMigrator_Base {
       add_action( 'admin_menu', array(&$this, 'admin_menu') );
       register_activation_hook(__FILE__, array(&$this, 'activate'));
       register_deactivation_hook(__FILE__, array(&$this, 'deactivate'));
-      // wp_enqueue_style( 'airport_manager', plugin_dir_url(__FILE__).'css/airport_manager.css', $this->version() );
     }
 
-    //add_action( 'init', array(&$this, 'manager') ); // magic within.
     add_action('parse_request', array(&$this, 'recall_migrate'));
 
     // MicroORMs:
     $this->rm = new RM_Recall();
-    // $this->cm = new AM_Country();
-    // $this->mm = new AM_City();
-    // $this->sm = new AM_State();
-    // $this->am = new AM_Airport();
-    // $this->pm = new AM_Permalink();
+    $this->pm = new RM_Permalink();
 
   }
 
@@ -219,7 +234,6 @@ class RecallMigrator extends RecallMigrator_Base {
     return str_replace('<title></title>', $inject, $header);
   }
 
-
   function admin_menu() {
     add_menu_page( __( "Recall Migrator", 'recall_migrator' ), __( "Recall Migrator", 'recall_migrator' ), "administrator", basename( __FILE__ ), array( &$this, "route_request" ), null, 25.2112 );
   }
@@ -250,7 +264,7 @@ class RecallMigrator extends RecallMigrator_Base {
         return $this->admin_edit_recall($recall_id, $page);
         break;
       case 'search':
-        $query = (isset($_POST['rm_query'])) ? $_POST['rm_query'] : $_GET['am_qurm_queryery'];
+        $query = (isset($_POST['rm_query'])) ? $_POST['rm_query'] : $_GET['rm_query'];
         $type = (isset($_POST['rm_type'])) ? $_POST['rm_type'] : $_GET['rm_type'];
         return $this->admin_search($query, $type, $page);
         break;
