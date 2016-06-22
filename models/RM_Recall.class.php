@@ -1,9 +1,9 @@
 <?php
 
-require_once __DIR__.'/AM_Model.class.php';
-class AM_Airport extends AM_Model {
+require_once __DIR__.'/RM_Model.class.php';
+class RM_Recall extends RM_Model {
 
-  public function AM_Airport() {
+  public function RM_Airport() {
     $this->table = 'airportsinfo';
   }
 

@@ -19,14 +19,15 @@ The search component (very basic)
 The bulk of the plugin is related to managing the database, and will just be cruft you need to dig through.
 */
 
+include __DIR__.'/lib/RecallMigrator_Base.class.php';
 include __DIR__.'/lib/Idorm.php';
+include __DIR__.'/models/RM_Recall.class.php';
 
 //Exit if accessed directly
 if ( ! defined( 'ABSPATH') ) {
   exit;
 }
 
-// include __DIR__.'/lib/AirportManager_Base.class.php';
 // include __DIR__.'/lib/Encoding.php';
 // include __DIR__.'/lib/Idorm.php';
 // include __DIR__.'/models/AM_Country.class.php';
