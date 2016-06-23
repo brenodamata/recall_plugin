@@ -36,7 +36,7 @@ define( 'RECALL_MIGRATOR_VERSION', '1.0' );
 define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
 
 // Hook triggered when plugin is installed
-register_activation_hook( __FILE__, 'trk_jal_install' );
+// register_activation_hook( __FILE__, 'trk_jal_install' );
 add_action('init', 'trk_recall_data');
 
 // Create Recalls table if one doesn't already exists
@@ -72,39 +72,92 @@ function trk_jal_install() {
 
 function trk_recall_data() {
   // credentials and sql file info
-  $mysql_database ='wp_dev';
-  $mysql_username ='root';
-  $mysql_password ='';
-  $mysql_host ='localhost';
-  $filename ='product_recalls.sql';
+  $db_name = 'wp_dev';
+  $db_user = 'root';
+  $db_pass = '';
+  $db_host = 'localhost';
+  $filename = __DIR__.'/test.sql';
+  $max_runtime = 8; // less then your max script execution limit
 
-  // Connect to MySQL server
-  mysql_connect($mysql_host, $mysql_username, $mysql_password) or die('Error connecting to MySQL server: ' . mysql_error());
+
+  $deadline = time() + $max_runtime;
+  $progress_filename = $filename.'_filepointer'; // tmp file for progress
+  $error_filename = $filename.'_error'; // tmp file for erro
+
+  // Connect to MySQL server (first is depracated)
+  // mysql_connect($db_host, $db_user, $db_pass) OR die('connecting to host: '.$db_host.' failed: '.mysql_error());
   // Select database
-  mysql_select_db($mysql_database) or die('Error selecting MySQL database: ' . mysql_error());
+  // mysql_select_db($db_name) OR die('select db: '.$dbName.' failed: '.mysql_error());
+  // New method to connect
+  $connection = mysqli_connect($db_host, $db_user, $db_pass, $db_name);
 
-  // Temporary variable, used to store current query
-  $templine = '';
-  // Read in entire file
-  $lines = file($filename);
+  ($fp = fopen($filename, 'r')) OR die('failed to open file:'.$filename);
 
-  foreach ($lines as $line) {
-    // Skip it if it's a comment
-    if (substr($line, 0, 2) == '--' || $line == '')
+  // check for previous error
+  if( file_exists($error_filename) ){
+    die('<pre> previous error: '.file_get_contents($error_filename));
+  }
+
+  // activate automatic reload in browser
+  echo '<html><head> <meta http-equiv="refresh" content="'.($max_runtime+2).'"><pre>';
+
+  // go to previous file position
+  $file_position = 0;
+  if( file_exists($progress_filename) ){
+    $file_position = file_get_contents($progress_filename);
+    fseek($fp, $file_position);
+  }
+
+  $query_count = 0;
+  $query = '';
+  while( $deadline>time() AND ($line=fgets($fp, 1024000)) ) {
+    if(substr($line,0,2)=='--' OR trim($line)=='' ){
       continue;
+    } // Skip if it's a commented line
 
-    // Add this line to the current segment
-    $templine .= $line;
-
-    // If it has a semicolon at the end, it's the end of the query
-    if (substr(trim($line), -1, 1) == ';') {
-      // Perform the query
-      mysql_query($templine) or print('Error performing query \'<strong>' . $templine . '\': ' . mysql_error() . '<br /><br />');
-      // Reset temp variable to empty
-      $templine = '';
+    $query .= $line;
+    if( substr(trim($query),-1)==';' ){
+      // if( !mysql_query($query) ){
+      if( !mysqli_query($connection, $query) ){
+        $error = 'Error performing query \'<strong>' . $query . '\': ' . mysql_error();
+        file_put_contents($error_filename, $error."\n");
+        exit;
+      }
+      $query = '';
+      file_put_contents($progress_filename, ftell($fp)); // save the current file position for
+      $query_count++;
     }
   }
-   echo "Tables imported successfully";
+
+  if( feof($fp) ){
+      echo 'dump successfully restored!';
+  }else{
+      echo ftell($fp).'/'.filesize($filename).' '.(round(ftell($fp)/filesize($filename), 2)*100).'%'."\n";
+      echo $query_count.' queries processed! please reload or wait for automatic browser refresh!';
+  }
+
+  // Temporary variable, used to store current query
+  // $templine = '';
+  // // Read in entire file
+  // $lines = file($filename);
+  //
+  // foreach ($lines as $line) {
+  //   // Skip it if it's a comment
+  //   if (substr($line, 0, 2) == '--' || $line == '')
+  //     continue;
+  //
+  //   // Add this line to the current segment
+  //   $templine .= $line;
+  //
+  //   // If it has a semicolon at the end, it's the end of the query
+  //   if (substr(trim($line), -1, 1) == ';') {
+  //     // Perform the query
+  //     mysql_query($templine) or print('Error performing query \'<strong>' . $templine . '\': ' . mysql_error() . '<br /><br />');
+  //     // Reset temp variable to empty
+  //     $templine = '';
+  //   }
+  // }
+  //  echo "Tables imported successfully";
 }
 
 class RecallMigrator extends RecallMigrator_Base {

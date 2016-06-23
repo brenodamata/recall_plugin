@@ -1,0 +1,4 @@
+.DS_Store
+*.sql_filepointer
+*.sql_error
+*.sql
