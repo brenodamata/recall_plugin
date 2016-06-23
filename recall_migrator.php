@@ -29,39 +29,82 @@ if ( ! defined( 'ABSPATH') ) {
   exit;
 }
 
-// include __DIR__.'/lib/Encoding.php';
-// include __DIR__.'/lib/Idorm.php';
-// include __DIR__.'/models/AM_Country.class.php';
-// include __DIR__.'/models/AM_State.class.php';
-// include __DIR__.'/models/AM_City.class.php';
-// include __DIR__.'/models/AM_Airport.class.php';
-
-
 if ( class_exists( 'RecallMigrator' ) )
   return;
 
 define( 'RECALL_MIGRATOR_VERSION', '1.0' );
 define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
 
+// Hook triggered when plugin is installed
 register_activation_hook( __FILE__, 'trk_jal_install' );
+add_action('init', 'trk_recall_data');
 
+// Create Recalls table if one doesn't already exists
 function trk_jal_install() {
   global $wpdb;
 
   $table_name = $wpdb->prefix . "recalls";
   $charset_collate = $wpdb->get_charset_collate();
 
-  $sql = "CREATE TABLE $table_name (
+  $sql = "CREATE TABLE IF NOT EXISTS $table_name (
     id mediumint(9) NOT NULL AUTO_INCREMENT,
-    time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
     name tinytext NOT NULL,
-    text text NOT NULL,
+    date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+    description text NOT NULL,
     url varchar(55) DEFAULT '' NOT NULL,
+    title varchar(55) DEFAULT '' NOT NULL,
+    consumer_contact text,
+    last_publish_date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+    number_of_units varchar(55) DEFAULT '',
+    injuries text,
+    hazards text,
+    remedies text,
+    retailers text,
+    country varchar(55) DEFAULT '',
+    recallable_id mediumint(9),
+    recallable_type varchar(55) DEFAULT '',
     UNIQUE KEY id (id)
   ) $charset_collate;";
 
   require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
   dbDelta( $sql );
+}
+
+function trk_recall_data() {
+  // credentials and sql file info
+  $mysql_database ='wp_dev';
+  $mysql_username ='root';
+  $mysql_password ='';
+  $mysql_host ='localhost';
+  $filename ='product_recalls.sql';
+
+  // Connect to MySQL server
+  mysql_connect($mysql_host, $mysql_username, $mysql_password) or die('Error connecting to MySQL server: ' . mysql_error());
+  // Select database
+  mysql_select_db($mysql_database) or die('Error selecting MySQL database: ' . mysql_error());
+
+  // Temporary variable, used to store current query
+  $templine = '';
+  // Read in entire file
+  $lines = file($filename);
+
+  foreach ($lines as $line) {
+    // Skip it if it's a comment
+    if (substr($line, 0, 2) == '--' || $line == '')
+      continue;
+
+    // Add this line to the current segment
+    $templine .= $line;
+
+    // If it has a semicolon at the end, it's the end of the query
+    if (substr(trim($line), -1, 1) == ';') {
+      // Perform the query
+      mysql_query($templine) or print('Error performing query \'<strong>' . $templine . '\': ' . mysql_error() . '<br /><br />');
+      // Reset temp variable to empty
+      $templine = '';
+    }
+  }
+   echo "Tables imported successfully";
 }
 
 class RecallMigrator extends RecallMigrator_Base {
