@@ -37,7 +37,7 @@ define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
 
 // Hook triggered when plugin is installed
 // register_activation_hook( __FILE__, 'trk_jal_install' );
-// add_action('init', 'trk_recall_data');
+add_action('init', 'trk_recall_data');
 
 // Create Recalls table if one doesn't already exists
 function trk_jal_install() {
@@ -76,7 +76,7 @@ function trk_recall_data() {
   $db_user = 'root';
   $db_pass = '';
   $db_host = 'localhost';
-  $filename = __DIR__.'/test.sql';
+  $filename = __DIR__.'/test_recalls.sql';
   $max_runtime = 8; // less then your max script execution limit
 
 
@@ -335,7 +335,7 @@ class RecallMigrator extends RecallMigrator_Base {
         $thing = 'Recall';
         $id_field = strtolower($thing).'_id';
         $id_value = $_GET[$id_field];
-        $item = $this->am->find($id_value);
+        $item = $this->rm->find($id_value);
         if($item !== false) {
           ORM::for_table('recall_permalinks')->where($id_field, $id_value)->delete_many();
           $item->delete();
