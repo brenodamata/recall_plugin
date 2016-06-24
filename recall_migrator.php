@@ -37,7 +37,7 @@ define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
 
 // Hook triggered when plugin is installed
 // register_activation_hook( __FILE__, 'trk_jal_install' );
-add_action('init', 'trk_recall_data');
+// add_action('init', 'trk_recall_data');
 
 // Create Recalls table if one doesn't already exists
 function trk_jal_install() {
@@ -202,7 +202,7 @@ class RecallMigrator extends RecallMigrator_Base {
     $ary = explode('?', $_SERVER['REQUEST_URI']);
     $uri = $ary[0];
 
-    if( stripos($uri, '/airports') === 0 || stripos($uri, '/private-jet/') === 0 || stripos($uri, '/airport-data/') === 0 ) {
+    if( stripos($uri, '/recalls') === 0 || stripos($uri, '/private-jet/') === 0 || stripos($uri, '/recall-data/') === 0 ) {
       $row = $this->search_for_permalink($uri, true);
       if($row) {
         wp_redirect($row['permalink'], 301);
@@ -219,51 +219,18 @@ class RecallMigrator extends RecallMigrator_Base {
       $row = $this->search_for_permalink(rtrim(strtolower($uri),'/'));
       if($row) {
         $item = $row;
-        if( $item['airport_id'] ) {
-          /* ############################### AIRPORT ################################### */
-          $airport = $this->am->find($item['airport_id']);
-          $country = null;
-          $state = null;
-          $muni = null;
-          $muni = $this->mm->find($airport['municipality_id']);
-          $country = $this->cm->find_by_code($airport['iso_country']);
-          $state = $this->sm->find($airport['us_state_id']);
-          $muni_url = $this->mm->find_permalink($airport['municipality_id']);
-          $vars = array('permalink' => $item, 'airport' => $airport, 'country' => $country, 'state' => $state, 'muni' => $muni, 'muni_url' => $muni_url);
-          $view = 'airport';
-        } else if ( $item['country_id'] ) {
-          /* ############################### COUNTRY ################################### */
-          $country = $this->cm->find($item['country_id']); //search_for_country($item['country_id'], 'countryid');
-          $states = null;
-          $munis = null;
-          if($country->code == 'US') {
-            $states = $this->get_us_states();
-          } else {
-            $munis = $this->search_for_objects($country->code, 'municipalities', 'iso_country', 'id', 'muni_id', 'municipalities.name');
-          }
-          $vars = array('permalink' => $item, 'country' => $country, 'states' => $states, 'munis' => $munis);
-          $view = 'country';
-        } else if ( $item['state_id'] ) {
-          /* ############################### STATE ################################### */
-          $state = $this->search_for_state($item['state_id']);
-          $country = null;
-          $country = $this->search_for_country('US');
-          $munis = $this->search_for_objects($state['stateid'], 'municipalities', 'us_state_id', 'id', 'muni_id', 'municipalities.name');
-          $vars = array('permalink' => $item, 'state' => $state, 'country' => $country, 'munis' => $munis);
-          $view = 'state';
-        } else if ( $item['muni_id'] ) {
-          /* ############################### MUNI ################################### */
-          $muni = $this->search_for_muni($item['muni_id']);
-          $state = null;
-          $country = null;
-          $airports = null;
-          if($muni->us_state_id) {
-            $state = $this->search_for_state($muni->us_state_id);
-          }
-          $country = $this->search_for_country($muni->iso_country);
-          $airports = $this->search_for_objects($muni->id, 'airportsinfo', 'municipality_id', 'id', 'airport_id', 'airportsinfo.name');
-          $vars = array('permalink' => $item, 'muni' => $muni, 'country' => $country, 'state' => $state, 'airports' => $airports);
-          $view = 'muni';
+        if( $item['recall_id'] ) {
+          /* ############################### RECALL ################################### */
+          $recall = $this->rm->find($item['recall_id']);
+          // $country = null;
+          // $state = null;
+          // $muni = null;
+          // $muni = $this->mm->find($recall['municipality_id']);
+          // $country = $this->cm->find_by_code($recall['iso_country']);
+          // $state = $this->sm->find($recall['us_state_id']);
+          // $muni_url = $this->mm->find_permalink($recall['municipality_id']);
+          $vars = array('permalink' => $item, 'recall' => $recall);
+          $view = '$recall';
         }
 
         $title_template = $this->get_or_cache_transient($view . '_title_template');
@@ -283,9 +250,9 @@ class RecallMigrator extends RecallMigrator_Base {
   // Cached to avoid constant lookups
   function get_or_cache_transient($key) {
     if( false === ($transient = get_transient($key) ) ) {
-      $opts = get_option('airport_manager_options');
+      $opts = get_option('recall_migrator_options');
       $transient = $opts[$key];
-      set_transient($key, $transient, AIRPORT_MANAGER_CACHE_DURATION);
+      set_transient($key, $transient, RECALL_MIGRATOR_CACHE_DURATION);
     }
     return $transient;
   }
@@ -356,7 +323,7 @@ class RecallMigrator extends RecallMigrator_Base {
         return $this->admin_save_template($_POST);
         break;
       case 'edit_recall':
-        $airport_id = $_GET['recall_id'];
+        $recall_id = $_GET['recall_id'];
         return $this->admin_edit_recall($recall_id, $page);
         break;
       case 'search':
