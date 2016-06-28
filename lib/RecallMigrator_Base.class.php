@@ -43,7 +43,7 @@ class RecallMigrator_Base {
     switch($type) {
       case 'recall':
         $results = $this->rm->search($query, $page);
-        $vars['orm'] = $this->am;
+        $vars['orm'] = $this->rm;
         break;
       // case 'city':
       //   $results = $this->mm->search($query, $page);
@@ -58,7 +58,7 @@ class RecallMigrator_Base {
   function admin_edit_recall($recall_id, $page = 1, $message = '') {
     $vars = array();
     if( $recall_id ) {
-      $recall = $this->am->find($recall_id);
+      $recall = $this->rm->find($recall_id);
       $vars['redirects'] = $this->rm->redirect_list($recall_id);
     } else {
       $recall = $this->rm->orm()->create();
