@@ -36,39 +36,47 @@ define( 'RECALL_MIGRATOR_VERSION', '1.0' );
 define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
 
 // Hook triggered when plugin is installed
-// register_activation_hook( __FILE__, 'trk_jal_install' );
+register_activation_hook( __FILE__, 'trk_jal_install' );
 add_action('init', 'trk_recall_data');
 
-// Create Recalls table if one doesn't already exists
+// Create Recalls and Permalinks tables if they doesn't already exists
 function trk_jal_install() {
   global $wpdb;
 
   $table_name = $wpdb->prefix . "recalls";
+  $table_name_pm = $wpdb->prefix . "recall_permalinks";
   $charset_collate = $wpdb->get_charset_collate();
 
   $sql = "CREATE TABLE IF NOT EXISTS $table_name (
     id mediumint(9) NOT NULL AUTO_INCREMENT,
     name tinytext NOT NULL,
-    date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+    date datetime,
     description text NOT NULL,
-    url varchar(55) DEFAULT '' NOT NULL,
-    title varchar(55) DEFAULT '' NOT NULL,
+    url varchar(255) DEFAULT '' NOT NULL,
+    title varchar(255) DEFAULT '' NOT NULL,
     consumer_contact text,
-    last_publish_date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+    last_publish_date datetime,
     number_of_units varchar(55) DEFAULT '',
     injuries text,
     hazards text,
     remedies text,
     retailers text,
-    country varchar(55) DEFAULT '',
+    country varchar(255) DEFAULT '',
     recallable_id mediumint(9),
     recallable_type varchar(55) DEFAULT '',
     UNIQUE KEY id (id)
   ) $charset_collate;";
 
+  $sql_pm = "CREATE TABLE IF NOT EXISTS $table_name_pm (
+    recall_id mediumint(9) NOT NULL,
+    permalink varchar(225) NOT NULL
+  ) $charset_collate;";
+
   require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
   dbDelta( $sql );
+  dbDelta( $sql_pm );
 }
+
 
 function trk_recall_data() {
   // credentials and sql file info
@@ -76,7 +84,7 @@ function trk_recall_data() {
   $db_user = 'root';
   $db_pass = '';
   $db_host = 'localhost';
-  $filename = __DIR__.'/test_recalls.sql';
+  $filename = __DIR__.'/test.sql';
   $max_runtime = 8; // less then your max script execution limit
 
 
@@ -136,28 +144,6 @@ function trk_recall_data() {
       echo $query_count.' queries processed! please reload or wait for automatic browser refresh!';
   }
 
-  // Temporary variable, used to store current query
-  // $templine = '';
-  // // Read in entire file
-  // $lines = file($filename);
-  //
-  // foreach ($lines as $line) {
-  //   // Skip it if it's a comment
-  //   if (substr($line, 0, 2) == '--' || $line == '')
-  //     continue;
-  //
-  //   // Add this line to the current segment
-  //   $templine .= $line;
-  //
-  //   // If it has a semicolon at the end, it's the end of the query
-  //   if (substr(trim($line), -1, 1) == ';') {
-  //     // Perform the query
-  //     mysql_query($templine) or print('Error performing query \'<strong>' . $templine . '\': ' . mysql_error() . '<br /><br />');
-  //     // Reset temp variable to empty
-  //     $templine = '';
-  //   }
-  // }
-  //  echo "Tables imported successfully";
 }
 
 class RecallMigrator extends RecallMigrator_Base {
@@ -165,9 +151,6 @@ class RecallMigrator extends RecallMigrator_Base {
   var $plugin_base = '';
   var $plugin_file = '';
   var $plugin_path = '';
-  // var $cm = null; // Countries
-  // var $mm = null; // Municipalities (Cities)
-  // var $sm = null; // States
   var $rm = null; // Recalls
   var $pm = null; // Permalinks
 
@@ -189,7 +172,7 @@ class RecallMigrator extends RecallMigrator_Base {
       register_deactivation_hook(__FILE__, array(&$this, 'deactivate'));
     }
 
-    add_action('parse_request', array(&$this, 'recall_migrate'));
+    add_action('parse_request', array(&$this, 'recall_rewrite'));
 
     // MicroORMs:
     $this->rm = new RM_Recall();
@@ -197,12 +180,12 @@ class RecallMigrator extends RecallMigrator_Base {
 
   }
 
-  function recall_migrate(){
+  function recall_rewrite(){
 
     $ary = explode('?', $_SERVER['REQUEST_URI']);
     $uri = $ary[0];
 
-    if( stripos($uri, '/recalls') === 0 || stripos($uri, '/private-jet/') === 0 || stripos($uri, '/recall-data/') === 0 ) {
+    if( stripos($uri, '/recalls/') === 0 ) {
       $row = $this->search_for_permalink($uri, true);
       if($row) {
         wp_redirect($row['permalink'], 301);
@@ -222,13 +205,6 @@ class RecallMigrator extends RecallMigrator_Base {
         if( $item['recall_id'] ) {
           /* ############################### RECALL ################################### */
           $recall = $this->rm->find($item['recall_id']);
-          // $country = null;
-          // $state = null;
-          // $muni = null;
-          // $muni = $this->mm->find($recall['municipality_id']);
-          // $country = $this->cm->find_by_code($recall['iso_country']);
-          // $state = $this->sm->find($recall['us_state_id']);
-          // $muni_url = $this->mm->find_permalink($recall['municipality_id']);
           $vars = array('permalink' => $item, 'recall' => $recall);
           $view = '$recall';
         }
@@ -277,10 +253,10 @@ class RecallMigrator extends RecallMigrator_Base {
     return $wpdb->get_results( $sql, ARRAY_A );
   }
 
-  function search_for_permalink($uri, $for_redirect=false) {
+  function search_for_permalink($uri) {
     global $wpdb;
-    $where = ($for_redirect) ? 'redirect_from' : 'permalink';
-    $fields = ($for_redirect) ? 'permalink' : 'permalink, recall_id';
+    $where = 'permalink';
+    $fields = 'permalink, recall_id';
     $trimmed = rtrim($uri, '/');
     $query = "SELECT $fields FROM recall_permalinks WHERE $where=%s or $where=%s";
     $sql = $wpdb->prepare( $query, $uri, $trimmed );
@@ -301,66 +277,6 @@ class RecallMigrator extends RecallMigrator_Base {
     add_menu_page( __( "Recall Migrator", 'recall_migrator' ), __( "Recall Migrator", 'recall_migrator' ), "administrator", basename( __FILE__ ), array( &$this, "route_request" ), null, 25.2112 );
   }
 
-  // TODO Loose coupling.
-  function route_request() {
-    $action = isset( $_GET['recall_migrator_action'] ) ? $_GET['recall_migrator_action'] : '';
-    $options = $this->get_options();
-    $page = max(intval($_GET['paginate']), 1); // page is reserved.
-    $_POST = stripslashes_deep($_POST);
-    switch($action) {
-      case 'edit_template':
-        $type = $_GET['template_type'];
-        if(strlen($type) == 0) {
-          return $this->render_view('admin/error', array( 'errors' => array('No template type specified.') ));
-        }
-        return $this->admin_edit_template($type);
-        break;
-      case 'save_template':
-        $type = $_POST['template_type'];
-        if(strlen($type) == 0) {
-          return $this->render_view('admin/error', array( 'errors' => array('No template type specified.') ));
-        }
-        return $this->admin_save_template($_POST);
-        break;
-      case 'edit_recall':
-        $recall_id = $_GET['recall_id'];
-        return $this->admin_edit_recall($recall_id, $page);
-        break;
-      case 'search':
-        $query = (isset($_POST['rm_query'])) ? $_POST['rm_query'] : $_GET['rm_query'];
-        $type = (isset($_POST['rm_type'])) ? $_POST['rm_type'] : $_GET['rm_type'];
-        return $this->admin_search($query, $type, $page);
-        break;
-      case 'delete_recall':
-        $thing = 'Recall';
-        $id_field = strtolower($thing).'_id';
-        $id_value = $_GET[$id_field];
-        $item = $this->rm->find($id_value);
-        if($item !== false) {
-          ORM::for_table('recall_permalinks')->where($id_field, $id_value)->delete_many();
-          $item->delete();
-          $this->count_all_items(true);
-          return $this->admin_dashboard("$thing deleted.");
-        } else {
-          return $this->admin_dashboard('', array('errors'=>array("$thing not found.")));
-        }
-        break;
-      case 'save_recall':
-        $result = $this->rm->save($_POST);
-        if(!isset($result['errors']) ) {
-          $this->count_all_items(true);
-          return $this->admin_edit_recall($result['id'], 1, $result['message']);
-        } else {
-          return $this->render_view('admin/error', array('errors'=>$result['errors']));
-        }
-        break;
-      default:
-        return $this->admin_dashboard();
-        break;
-    }
-
-  }
-
   function render_view($view, $vars = array()) {
     foreach ( $vars AS $key => $val ) {
       $$key = $val;
@@ -377,65 +293,3 @@ class RecallMigrator extends RecallMigrator_Base {
 }
 
 $recall_migrator = new RecallMigrator();
-
-
-
-/*
-function trk_register_post_type() {
-
-  $singular = 'Recall';
-  $plural = 'Recalls';
-
-  $labels = array(
-    'name'               => $plural,
-    'singular_name'      => $singular,
-    'add_name'           => 'Add New',
-    'add_new_item'       => 'Add New' . $singular,
-    'edit'               => 'Edit',
-    'edit_item'          => 'Edit ' . $singular,
-    'new_item'           => 'New ' . $singular,
-    'view'               => 'View ' . $singular,
-    'view_item'          => 'View ' . $singular,
-    'search_term'        => 'Search ' . $plural,
-    'parent'             => 'Parent ' . $singular,
-    'not_found'          => 'No ' . $plural . ' found',
-    'not_found_in_trash' => 'No ' . $plural . ' in Trash'
-  );
-
-  $args = array(
-    'labels'              => $labels,
-    'plubic'              => true,
-    'plubic_queryable'    => true,
-    'exclude_from_search' => false,
-    'show_in_nav_menus'   => true,
-    'show_ui'             => true,
-    'show_in_menu'        => true,
-    'show_in_admin_bar'   => true,
-    'menu_position'       => 6,
-    'menu_icon'        => 'dashicons-image-rotate',
-    'can_export'          => true,
-    'delete_with_user'    => false,
-    'hierarchical'        => false,
-    'has_archive'         => true,
-    'query_var'           => true,
-    'capability_type'     => 'page',
-    'map_meta_cap'        => true,
-    'reqrite' => array(
-      'slug'        => 'recalls',
-      'with_front'  => true,
-      'pages'       => true,
-      'feeds'       => true
-    ),
-    'supports' => array(
-      'title',
-      'editor',
-      'author',
-      'custom_fields'
-    )
-
-  );
-
-  register_post_type( 'recall', $args);
-}
-add_action( 'init', 'trk_register_post_type');
-*/
