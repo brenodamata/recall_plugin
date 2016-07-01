@@ -107,7 +107,7 @@ function trk_recall_data() {
   }
 
   // activate automatic reload in browser
-  echo '<html><head> <meta http-equiv="refresh" content="'.($max_runtime+2).'"><pre>';
+  // echo '<html><head> <meta http-equiv="refresh" content="'.($max_runtime+2).'"><pre>';
 
   // go to previous file position
   $file_position = 0;
@@ -127,7 +127,7 @@ function trk_recall_data() {
     if( substr(trim($query),-1)==';' ){
       // if( !mysql_query($query) ){
       if( !mysqli_query($connection, $query) ){
-        $error = 'Error performing query \'<strong>' . $query . '\': ' . mysql_error();
+        $error = 'Error performing query - ' . mysql_error();
         file_put_contents($error_filename, $error."\n");
         exit;
       }
