@@ -2,3 +2,4 @@
 *.sql_filepointer
 *.sql_error
 *.sql
+*.bkp

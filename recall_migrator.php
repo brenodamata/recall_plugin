@@ -36,8 +36,8 @@ define( 'RECALL_MIGRATOR_VERSION', '1.0' );
 define( 'RECALL_MIGRATOR_CACHE_DURATION', 60*60*1 ); // 1 hour
 
 // Hook triggered when plugin is installed
-register_activation_hook( __FILE__, 'trk_jal_install' );
-add_action('init', 'trk_recall_data');
+// register_activation_hook( __FILE__, 'trk_jal_install' );
+// add_action('init', 'trk_recall_data');
 
 // Create Recalls and Permalinks tables if they doesn't already exists
 function trk_jal_install() {
@@ -157,10 +157,6 @@ class RecallMigrator extends RecallMigrator_Base {
   function RecallMigrator() {
     $host_string = sprintf("mysql:host=%s;dbname=%s", DB_HOST, DB_NAME);
     ORM::configure($host_string);
-    // ORM::configure('id_column_overrides', array(
-      // 'countriesinfo' => 'countryid',
-      // 'us_states' => 'stateid'
-      // ));
     ORM::configure('username', DB_USER);
     ORM::configure('password', DB_PASSWORD);
     $this->plugin_base = rtrim( dirname( __FILE__ ), '/' );
@@ -185,42 +181,53 @@ class RecallMigrator extends RecallMigrator_Base {
     $ary = explode('?', $_SERVER['REQUEST_URI']);
     $uri = $ary[0];
 
-    if( stripos($uri, '/recalls/') === 0 ) {
-      $row = $this->search_for_permalink($uri, true);
-      if($row) {
-        wp_redirect($row['permalink'], 301);
-        exit;
-      }
-    } else if( stripos(rtrim($uri, '/'), '/private-jet-charter/') === 0 ) {
-      // See if we have anything inside /private-jet-charter/ that needs 301 fun
-      $row = $this->search_for_permalink($uri, true);
-      if($row) {
-        wp_redirect($row['permalink'], 301);
-        exit;
-      }
+    // if( stripos($uri, '/recalls') === 0 || stripos($uri, '/recalls/') === 0 ) {
+    //   $row = $this->search_for_permalink($uri, true);
+    //   echo $row;
+    //
+    //   if($row) {
+    //     wp_redirect($row['permalink'], 301);
+    //     exit;
+    //   }
+    // }
 
-      $row = $this->search_for_permalink(rtrim(strtolower($uri),'/'));
-      if($row) {
-        $item = $row;
-        if( $item['recall_id'] ) {
-          /* ############################### RECALL ################################### */
-          $recall = $this->rm->find($item['recall_id']);
-          $vars = array('permalink' => $item, 'recall' => $recall);
-          $view = '$recall';
-        }
+    // if( stripos($uri, '/recalls/') === 0 ) {
+    //   $row = $this->search_for_permalink($uri, true);
+    //   if($row) {
+    //     wp_redirect($row['permalink'], 301);
+    //     exit;
+    //   }
+    // } else if( stripos(rtrim($uri, '/'), '/private-jet-charter/') === 0 ) {
+    //   // See if we have anything inside /private-jet-charter/ that needs 301 fun
+    //   $row = $this->search_for_permalink($uri, true);
+    //   if($row) {
+    //     wp_redirect($row['permalink'], 301);
+    //     exit;
+    //   }
+    $this->render_view("public/test");
 
-        $title_template = $this->get_or_cache_transient($view . '_title_template');
-        $header_template = $this->get_or_cache_transient($view . '_header_template');
-        $body_template = $this->get_or_cache_transient($view . '_body_template');
-
-        $vars['generated_title'] = $this->replace_tokens($view, $vars, $title_template);
-        $vars['generated_header'] = $this->replace_tokens($view, $vars, $header_template);
-        $vars['generated_content'] = $this->replace_tokens($view, $vars, $body_template);
-
-        $this->render_view("public/$view", $vars);
-        exit; // Halt WordPress execution.
-      }
-    }
+      // $row = $this->search_for_permalink($uri);
+      // if($row) {
+      //   $item = $row;
+      //   if( $item['recall_id'] ) {
+      //     /* ############################### RECALL ################################### */
+      //     $recall = $this->rm->find($item['recall_id']);
+      //     $vars = array('permalink' => $item, 'recall' => $recall);
+      //     $view = '$recall';
+      //   }
+      //
+      //   // $title_template = $this->get_or_cache_transient($view . '_title_template');
+      //   // $header_template = $this->get_or_cache_transient($view . '_header_template');
+      //   // $body_template = $this->get_or_cache_transient($view . '_body_template');
+      //   //
+      //   // $vars['generated_title'] = $this->replace_tokens($view, $vars, $title_template);
+      //   // $vars['generated_header'] = $this->replace_tokens($view, $vars, $header_template);
+      //   // $vars['generated_content'] = $this->replace_tokens($view, $vars, $body_template);
+      //
+      //   $this->render_view("public/$view", $vars);
+      //   exit; // Halt WordPress execution.
+      // }
+    // }
   }
 
   // Cached to avoid constant lookups
@@ -247,7 +254,7 @@ class RecallMigrator extends RecallMigrator_Base {
     } else {
       $order_by = null;
     }
-    $query = "SELECT * FROM $table inner join recall_permalinks on $table.$pl_k=recall_permalinks.$pl_fk WHERE $search_field=%s $order_by";
+    $query = "SELECT * FROM $table inner join wp_recall_permalinks on $table.$pl_k=wp_recall_permalinks.$pl_fk WHERE $search_field=%s $order_by";
 
     $sql = $wpdb->prepare( $query, $value );
     return $wpdb->get_results( $sql, ARRAY_A );
@@ -257,8 +264,8 @@ class RecallMigrator extends RecallMigrator_Base {
     global $wpdb;
     $where = 'permalink';
     $fields = 'permalink, recall_id';
-    $trimmed = rtrim($uri, '/');
-    $query = "SELECT $fields FROM recall_permalinks WHERE $where=%s or $where=%s";
+    $trimmed = ltrim(rtrim($uri, '/'), '/recalls/'); // get the permalink only
+    $query = "SELECT $fields FROM wp_recall_permalinks WHERE $where=%s or $where=%s";
     $sql = $wpdb->prepare( $query, $uri, $trimmed );
     return $wpdb->get_row( $sql, ARRAY_A );
   }
@@ -277,6 +284,64 @@ class RecallMigrator extends RecallMigrator_Base {
     add_menu_page( __( "Recall Migrator", 'recall_migrator' ), __( "Recall Migrator", 'recall_migrator' ), "administrator", basename( __FILE__ ), array( &$this, "route_request" ), null, 25.2112 );
   }
 
+  // TODO Loose coupling.
+  function route_request() {
+    // return $this->admin_dashboard();
+
+    $action = isset( $_GET['recall_migrator_action'] ) ? $_GET['recall_migrator_action'] : '';
+    $options = $this->get_options();
+    // $page = max(intval($_GET['paginate']), 1); // page is reserved.
+    $_POST = stripslashes_deep($_POST);
+    switch($action) {
+      case 'edit_template':
+        $type = $_GET['template_type'];
+        if(strlen($type) == 0) {
+          return $this->render_view('admin/error', array( 'errors' => array('No template type specified.') ));
+        }
+        return $this->admin_edit_template($type);
+        break;
+      case 'save_template':
+        $type = $_POST['template_type'];
+        if(strlen($type) == 0) {
+          return $this->render_view('admin/error', array( 'errors' => array('No template type specified.') ));
+        }
+        return $this->admin_save_template($_POST);
+        break;
+      case 'search':
+        $query = (isset($_POST['rm_query'])) ? $_POST['rm_query'] : $_GET['rm_query'];
+        $type = (isset($_POST['rm_type'])) ? $_POST['rm_type'] : $_GET['rm_type'];
+        return $this->admin_search($query, $type, $page);
+        break;
+      case 'delete_recall':
+        $thing = 'Recall';
+        $id_field = strtolower($thing).'_id';
+        $id_value = $_GET[$id_field];
+        $item = $this->rm->find($id_value);
+        if($item !== false) {
+          ORM::for_table('wp_recall_permalinks')->where($id_field, $id_value)->delete_many();
+          $item->delete();
+          $this->count_all_items(true);
+          return $this->admin_dashboard("$thing deleted.");
+        } else {
+          return $this->admin_dashboard('', array('errors'=>array("$thing not found.")));
+        }
+        break;
+      case 'save_recall':
+        $result = $this->rm->save($_POST);
+        if(!isset($result['errors']) ) {
+          $this->count_all_items(true);
+          return $this->admin_edit_recall($result['id'], 1, $result['message']);
+        } else {
+          return $this->render_view('admin/error', array('errors'=>$result['errors']));
+        }
+        break;
+      default:
+        return $this->admin_dashboard();
+        break;
+    }
+
+  }
+
   function render_view($view, $vars = array()) {
     foreach ( $vars AS $key => $val ) {
       $$key = $val;
@@ -288,7 +353,6 @@ class RecallMigrator extends RecallMigrator_Base {
       echo "<p>Rendering view {$this->plugin_base}/views/$view.php failed</p>";
     }
   }
-
 
 }
 

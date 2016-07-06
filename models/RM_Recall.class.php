@@ -3,8 +3,8 @@
 require_once __DIR__.'/RM_Model.class.php';
 class RM_Recall extends RM_Model {
 
-  public function RM_Airport() {
-    $this->table = 'airportsinfo';
+  public function RM_Recall() {
+    $this->table = 'wp_recalls';
   }
 
   public function find($id) {
@@ -12,7 +12,7 @@ class RM_Recall extends RM_Model {
   }
 
   public function find_permalink($id) {
-    $o = ORM::for_table('recall_permalinks')->select('permalink')->where('recall_id', $id)->limit(1)->find_one();
+    $o = ORM::for_table('wp_recall_permalinks')->select('permalink')->where('recall_id', $id)->limit(1)->find_one();
     if($o) {
       return $o->permalink;
     } else {
@@ -21,7 +21,7 @@ class RM_Recall extends RM_Model {
   }
 
   public function redirect_list($id) {
-    return ORM::for_table('recall_permalinks')->select('id')->select('redirect_from')->where_not_equal('redirect_from','')->where('recall_id', $id)->find_many();
+    return ORM::for_table('wp_recall_permalinks')->select('id')->select('redirect_from')->where_not_equal('redirect_from','')->where('recall_id', $id)->find_many();
   }
 
   public function search($query, $page = 1) {

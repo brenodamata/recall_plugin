@@ -29,8 +29,6 @@ class RecallMigrator_Base {
   function admin_dashboard($message = '', $errors = array()) {
     $vars = array();
     $vars['counts'] = $this->count_all_items();
-    // $vars['all_countries'] = $this->cm->all_for_dashboard();
-    // $vars['all_states'] = $this->sm->all_for_dashboard();
     $vars['message'] = $message;
     if(count($errors) > 0) {
       $vars['errors'] = $errors;
@@ -76,14 +74,8 @@ class RecallMigrator_Base {
     if( false === ($counts = get_transient($t_name) ) ) {
       global $wpdb;
       $counts = array();
-      // $country = $wpdb->get_row('SELECT COUNT(*) as thecount FROM countriesinfo USE INDEX (PRIMARY)', ARRAY_A);
       $recall = $wpdb->get_row('SELECT COUNT(*) as count FROM wp_recalls USE INDEX (PRIMARY)', ARRAY_A);
-      // $state = $wpdb->get_row('SELECT COUNT(*) as thecount FROM us_states USE INDEX (PRIMARY)', ARRAY_A);
-      // $muni = $wpdb->get_row('SELECT COUNT(*) as thecount FROM municipalities USE INDEX (PRIMARY)', ARRAY_A);
-      // $counts['country'] = $country['thecount'];
       $counts['recall'] = $recall['count'];
-      // $counts['state'] = $state['thecount'];
-      // $counts['muni'] = $muni['thecount'];
       set_transient($t_name, $counts, 60*60*1);
     }
     return $counts;

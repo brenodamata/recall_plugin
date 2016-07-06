@@ -3,7 +3,7 @@
   <?php screen_icon('tools'); ?>
   <h2><?php _e ('Recall Migrator Dashboard', 'recall_migrator'); ?></h2>
   <ul class="subsubsub">
-    <li>Recalls ( <?php echo $counts['recall']; ?> ) |</li>
+    <li><a href="<?php echo $this->url_for('edit_recall');?>">Recalls</a> ( <?php echo $counts['recall']; ?> ) |</li>
     <li> | </li>
     <li>
       <strong>Add new: </strong>
